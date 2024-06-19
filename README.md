@@ -8,7 +8,7 @@ run:
 install:
 > python -m venv MC_task \
 > source MC_task/bin/activate \
->pip install -r requirements.txt \
+>pip install -r requirements.txt 
 
  
 
