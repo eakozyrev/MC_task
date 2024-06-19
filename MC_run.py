@@ -22,6 +22,8 @@ class RQuant_Stable:
         self.quant_method = quant_method
         self.step = step
         self.data1 = np.zeros(self.ndays)
+        if self.ndays-self.step + 1 < 1:
+            raise Exception("Step have to be <= ndays")
         self.data10 = np.zeros(self.ndays-self.step + 1)
 
     def gen_stable(self):
@@ -92,16 +94,17 @@ class RQuant_Stable:
         res = np.array([])
         data_mean = np.array([])
         while True:
-            data_stable = self.gen_stable_scipy()
-            data_stable_10 = self.get_n_from_stable()
+            self.gen_stable_scipy()
+            self.get_n_from_stable()
             quant = np.quantile(a=self.data10,q=quantile,method='hazen')
             res = np.append(res,quant)
             data_mean = np.append(data_mean,res.mean())
+            # stop generation if data_mean[-10:].std() < np.fabs(delta*res.mean())
             if res.shape[0] > 10 and data_mean[-10:].std() < np.fabs(delta*res.mean()): break
         return res
 
 
-def plot_histogram(ax, data, bins, range, title, log=False, histtype='bar', label=None, density=False):
+def plot_histogram(ax, data, bins, range, title = '', log=False, histtype='bar', label=None, density=False):
     """
     plot histogramm
     """
@@ -132,19 +135,19 @@ def main(nevent, delta):
     # generate high statistics spectrum of quantiles
     data_q_limit = generator.get_n_quantile_p(nevents=nevent, quantile=0.01)
     q_limit_range = (data_q_limit.min(), data_q_limit.max())
-    plot_histogram(ax[1, 0], data_q_limit, bins=100, range=q_limit_range, title='1% quantile spectrum in [min,max] range', log=True, density=True, label=f'n events = {nevent}')
+    plot_histogram(ax[1, 0], data_q_limit, bins=100, range=q_limit_range, log=True, density=True, label=f'n events = {nevent}')
 
     # generate small sample of events
     data_q = generator.get_n_quantile_p_while(quantile=0.01,delta=delta)
-    plot_histogram(ax[1, 0], data_q, bins=100, range=q_limit_range, title='', log=True, histtype='step', density=True, label=f'n events = {data_q.shape[0]}')
+    plot_histogram(ax[1, 0], data_q, bins=100, range=q_limit_range, title='1% quantile spectrum in [min,max] range', log=True, histtype='step', density=True, label=f'n events = {data_q.shape[0]}')
 
     q = np.quantile(data_q_limit, 0.01, method='hazen')
-    plot_histogram(ax[1, 1], data_q_limit, bins=100, range=(q, data_q_limit.max()), title='1% quantile spectrum in [1% quantile,max] range', log=True, density=True, label=f'n events = {nevent}')
-    plot_histogram(ax[1, 1], data_q, bins=100, range=(q, data_q_limit.max()), title='', log=True, histtype='step', density=True, label=f'n events = {data_q.shape[0]}')
+    plot_histogram(ax[1, 1], data_q_limit, bins=100, range=(q, data_q_limit.max()), log=True, density=True, label=f'n events = {nevent}')
+    plot_histogram(ax[1, 1], data_q, bins=100, range=(q, data_q_limit.max()), title='1% quantile spectrum in [1% quantile,max] range', log=True, histtype='step', density=True, label=f'n events = {data_q.shape[0]}')
 
     print(f'min/max of generated spectrum: {np.round(data_q.min())} {np.round(data_q.max())}')
     print(f'Number of events = {data_q.shape[0]}')
-    print('Kolmogorov-Smirnov test comparing generated spectrum and high statistics spectrum')
+    print('Kolmogorov-Smirnov test comparing generated spectrum and high statistics spectrum:')
     print(stats.ks_2samp(data_q, data_q_limit))
     
     plt.show()
